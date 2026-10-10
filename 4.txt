@@ -1,0 +1,703 @@
+SET SERVEROUTPUT ON;
+
+NOTE: Use a table StudentTable(RollNo, GPA) and populate the table with {(1, 5.8); (2, 
+6.5); (3, 3.4); (4,7.8); (5, 9.5)} unless a different DB schema is explicitly specified.  
+
+1. Write a PL/SQL block to display the GPA of given student. 
+
+CREATE TABLE StudentTable (
+    RollNo NUMBER PRIMARY KEY,
+    GPA NUMBER(3,1)
+);
+
+INSERT INTO StudentTable VALUES (1, 5.8);
+INSERT INTO StudentTable VALUES (2, 6.5);
+INSERT INTO StudentTable VALUES (3, 9.5);
+
+COMMIT;
+
+DECLARE
+    v_rollno NUMBER := 1;
+    v_gpa NUMBER;
+BEGIN
+    SELECT GPA INTO v_gpa
+    FROM StudentTable
+    WHERE RollNo = v_rollno;
+
+    DBMS_OUTPUT.PUT_LINE('GPA = ' || v_gpa);
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('Student not found');
+END;
+/
+
+
+Usage of IF –THEN:  
+2. Write a PL/SQL block to display the letter grade(0-4: F; 4-5: E; 5-6: D; 6
+C; 7-8: B; 8-9: A; 9-10: A+} of given student.  
+
+DECLARE
+    v_rollno NUMBER := 1;
+    v_gpa NUMBER;
+    v_grade VARCHAR2(2);
+BEGIN
+    SELECT GPA INTO v_gpa
+    FROM StudentTable
+    WHERE RollNo = v_rollno;
+
+    IF v_gpa < 4 THEN
+        v_grade := 'F';
+    ELSIF v_gpa < 5 THEN
+        v_grade := 'E';
+    ELSIF v_gpa < 6 THEN
+        v_grade := 'D';
+    ELSIF v_gpa < 7 THEN
+        v_grade := 'C';
+    ELSIF v_gpa < 8 THEN
+        v_grade := 'B';
+    ELSIF v_gpa < 9 THEN
+        v_grade := 'A';
+    ELSE
+        v_grade := 'A+';
+    END IF;
+
+    DBMS_OUTPUT.PUT_LINE('Grade = ' || v_grade);
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('Student not found');
+END;
+/
+
+
+Q3. Input the date of issue and date of return for a book. Calculate and display the fine with the appropriate message using a PL/SQL block. The fine is charged as per Table 8.1.
+The manual's fine table specifies:
+- 7 days: NIL
+- 8–15 days: Rs. 1/day
+- 16–30 days: Rs. 2/day
+- After 30 days: Rs. 5.00
+
+DECLARE
+    v_issue_date DATE := DATE '2026-01-01';
+    v_return_date DATE := DATE '2026-01-20';
+    v_days NUMBER;
+    v_fine NUMBER := 0;
+BEGIN
+    v_days := v_return_date - v_issue_date;
+
+    IF v_days <= 7 THEN
+        v_fine := 0;
+    ELSIF v_days <= 15 THEN
+        v_fine := (v_days - 7) * 1;
+    ELSIF v_days <= 30 THEN
+        v_fine := (8 * 1) + ((v_days - 15) * 2);
+    ELSE
+        v_fine := (8 * 1) + (15 * 2)
+                   + ((v_days - 30) * 5);
+    END IF;
+
+    DBMS_OUTPUT.PUT_LINE('Late days: ' || v_days);
+    DBMS_OUTPUT.PUT_LINE('Fine: Rs. ' || v_fine);
+END;
+/
+
+
+Q4. Write a PL/SQL block to print the letter grade of all the students (RollNo: 1–5).
+
+DECLARE
+    v_gpa NUMBER;
+    v_grade VARCHAR2(2);
+BEGIN
+    FOR r IN 1..5 LOOP
+        SELECT GPA INTO v_gpa
+        FROM StudentTable
+        WHERE RollNo = r;
+
+        IF v_gpa < 4 THEN
+            v_grade := 'F';
+        ELSIF v_gpa < 5 THEN
+            v_grade := 'E';
+        ELSIF v_gpa < 6 THEN
+            v_grade := 'D';
+        ELSIF v_gpa < 7 THEN
+            v_grade := 'C';
+        ELSIF v_gpa < 8 THEN
+            v_grade := 'B';
+        ELSIF v_gpa < 9 THEN
+            v_grade := 'A';
+        ELSE
+            v_grade := 'A+';
+        END IF;
+
+        DBMS_OUTPUT.PUT_LINE(
+            'Roll No: ' || r || ', Grade: ' || v_grade
+        );
+    END LOOP;
+END;
+/
+
+
+Q5. Alter StudentTable by appending an additional column LetterGrade VARCHAR2(2). Then write a PL/SQL block to update the table with letter grade of each student.
+First, run the alteration once:
+
+ALTER TABLE StudentTable
+ADD LetterGrade VARCHAR2(2);
+
+
+DECLARE
+    v_grade VARCHAR2(2);
+BEGIN
+    FOR r IN (
+        SELECT RollNo, GPA
+        FROM StudentTable
+    ) LOOP
+        IF r.GPA < 4 THEN
+            v_grade := 'F';
+        ELSIF r.GPA < 5 THEN
+            v_grade := 'E';
+        ELSIF r.GPA < 6 THEN
+            v_grade := 'D';
+        ELSIF r.GPA < 7 THEN
+            v_grade := 'C';
+        ELSIF r.GPA < 8 THEN
+            v_grade := 'B';
+        ELSIF r.GPA < 9 THEN
+            v_grade := 'A';
+        ELSE
+            v_grade := 'A+';
+        END IF;
+
+        UPDATE StudentTable
+        SET LetterGrade = v_grade
+        WHERE RollNo = r.RollNo;
+    END LOOP;
+
+    COMMIT;
+END;
+/
+
+SELECT * FROM StudentTable;
+
+
+Q6. Write a PL/SQL block to find the student with max. GPA without using aggregate function.
+
+DECLARE
+    v_max_gpa NUMBER;
+    v_max_roll NUMBER;
+    v_gpa NUMBER;
+BEGIN
+    SELECT RollNo, GPA
+    INTO v_max_roll, v_max_gpa
+    FROM StudentTable
+    WHERE RollNo = 1;
+
+    FOR r IN 2..5 LOOP
+        SELECT GPA INTO v_gpa
+        FROM StudentTable
+        WHERE RollNo = r;
+
+        IF v_gpa > v_max_gpa THEN
+            v_max_gpa := v_gpa;
+            v_max_roll := r;
+        END IF;
+    END LOOP;
+
+    DBMS_OUTPUT.PUT_LINE('Roll No: ' || v_max_roll);
+    DBMS_OUTPUT.PUT_LINE('Maximum GPA: ' || v_max_gpa);
+END;
+/
+
+
+Q7. Implement lab exercise 4 using GOTO.
+
+DECLARE
+    v_roll NUMBER := 1;
+    v_gpa NUMBER;
+    v_grade VARCHAR2(2);
+BEGIN
+    <<student_loop>>
+    SELECT GPA INTO v_gpa
+    FROM StudentTable
+    WHERE RollNo = v_roll;
+
+    IF v_gpa < 4 THEN
+        v_grade := 'F';
+    ELSIF v_gpa < 5 THEN
+        v_grade := 'E';
+    ELSIF v_gpa < 6 THEN
+        v_grade := 'D';
+    ELSIF v_gpa < 7 THEN
+        v_grade := 'C';
+    ELSIF v_gpa < 8 THEN
+        v_grade := 'B';
+    ELSIF v_gpa < 9 THEN
+        v_grade := 'A';
+    ELSE
+        v_grade := 'A+';
+    END IF;
+
+    DBMS_OUTPUT.PUT_LINE(
+        'Roll No: ' || v_roll || ', Grade: ' || v_grade
+    );
+
+    v_roll := v_roll + 1;
+
+    IF v_roll <= 5 THEN
+        GOTO student_loop;
+    END IF;
+END;
+/
+
+
+Q8. Based on the University database schema, write a PL/SQL block to display the details of the Instructor whose name is supplied by the user. Use exceptions to show appropriate error message for (a) multiple instructors with the same name and (b) no instructor for the given name.
+
+DECLARE
+    v_name Instructor.name%TYPE := 'Anita';
+    v_id Instructor.ID%TYPE;
+    v_dept Instructor.dept_name%TYPE;
+    v_salary Instructor.salary%TYPE;
+BEGIN
+    SELECT ID, dept_name, salary
+    INTO v_id, v_dept, v_salary
+    FROM Instructor
+    WHERE name = v_name;
+
+    DBMS_OUTPUT.PUT_LINE('Instructor ID: ' || v_id);
+    DBMS_OUTPUT.PUT_LINE('Name: ' || v_name);
+    DBMS_OUTPUT.PUT_LINE('Department: ' || v_dept);
+    DBMS_OUTPUT.PUT_LINE('Salary: ' || v_salary);
+
+EXCEPTION
+    WHEN TOO_MANY_ROWS THEN
+        DBMS_OUTPUT.PUT_LINE(
+            'Error: Multiple instructors have the same name.'
+        );
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE(
+            'Error: No instructor found with the given name.'
+        );
+END;
+/
+
+
+Q9. The HRD manager has decided to raise the salary of all the Instructors in a given department number by 5%. Whenever, any such raise is given to the instructor, a record for the same is maintained in the salary_raise table. It includes the Instructor ID, the date when the raise was given and the actual raise amount. Write a PL/SQL block to update the salary of each Instructor and insert a record in the salary_raise table.
+/The manual lists salary_raise(Instructor_Id, Raise_date, Raise_amt). Its University schema has dept_name rather than a department number, so this example selects instructors by department name.
+Create the table once:
+
+CREATE TABLE salary_raise (
+    Instructor_Id NUMBER,
+    Raise_date DATE,
+    Raise_amt NUMBER(10,2)
+);
+
+
+DECLARE
+    v_dept_name Instructor.dept_name%TYPE := 'CSE';
+BEGIN
+    FOR r IN (
+        SELECT ID, salary
+        FROM Instructor
+        WHERE dept_name = v_dept_name
+        FOR UPDATE
+    ) LOOP
+        UPDATE Instructor
+        SET salary = salary * 1.05
+        WHERE ID = r.ID;
+
+        INSERT INTO salary_raise
+        VALUES (
+            r.ID,
+            SYSDATE,
+            ROUND(r.salary * 0.05, 2)
+        );
+    END LOOP;
+
+    COMMIT;
+    DBMS_OUTPUT.PUT_LINE('Salary updated and raise recorded.');
+END;
+/
+
+
+Q10. Write a PL/SQL block that will display the ID, name, dept_name and tot_cred of the first 10 students with lowest total credit.
+
+BEGIN
+    FOR r IN (
+        SELECT studID, name, dept_name, tot_cred
+        FROM Student
+        ORDER BY tot_cred ASC
+        FETCH FIRST 10 ROWS ONLY
+    ) LOOP
+        DBMS_OUTPUT.PUT_LINE(
+            'ID: ' || r.studID ||
+            ', Name: ' || r.name ||
+            ', Department: ' || r.dept_name ||
+            ', Total Credits: ' || r.tot_cred
+        );
+    END LOOP;
+END;
+/
+
+
+Q11. Print the Course details and the total number of students registered for each course along with the course details — (Course-id, title, dept-name, credits, instructor_name, building, room-number, time-slot-id, tot_student_no).
+
+BEGIN
+    FOR r IN (
+        SELECT C.course_id,
+               C.title,
+               C.dept_name,
+               C.credits,
+               I.name AS instructor_name,
+               S.building,
+               S.room_number,
+               S.time_slot_id,
+               COUNT(T.studID) AS tot_student_no
+        FROM Course C
+        LEFT JOIN Section S
+            ON C.course_id = S.course_id
+        LEFT JOIN Teaches TE
+            ON S.course_id = TE.course_id
+           AND S.section_id = TE.section_id
+           AND S.semester = TE.semester
+           AND S.year = TE.year
+        LEFT JOIN Instructor I
+            ON TE.ID = I.ID
+        LEFT JOIN Takes T
+            ON S.course_id = T.course_id
+           AND S.section_id = T.section_id
+           AND S.semester = T.semester
+           AND S.year = T.year
+        GROUP BY C.course_id, C.title, C.dept_name, C.credits,
+                 I.name, S.building, S.room_number, S.time_slot_id
+    ) LOOP
+        DBMS_OUTPUT.PUT_LINE(
+            'Course: ' || r.course_id ||
+            ', Title: ' || r.title ||
+            ', Department: ' || r.dept_name ||
+            ', Credits: ' || r.credits ||
+            ', Instructor: ' || NVL(r.instructor_name, 'Not assigned') ||
+            ', Building: ' || NVL(r.building, 'Not assigned') ||
+            ', Room: ' || NVL(TO_CHAR(r.room_number), 'N/A') ||
+            ', Time Slot: ' || NVL(r.time_slot_id, 'N/A') ||
+            ', Students: ' || r.tot_student_no
+        );
+    END LOOP;
+END;
+/
+
+
+Q12. Alter StudentTable by resetting column LetterGrade to F. Then write a PL/SQL block to update the table by mapping GPA to the corresponding letter grade for each student.
+First reset the grades:
+
+UPDATE StudentTable
+SET LetterGrade = 'F';
+
+COMMIT;
+
+
+/Then map the GPA to the appropriate letter grade:
+
+DECLARE
+    v_grade VARCHAR2(2);
+BEGIN
+    FOR r IN (
+        SELECT RollNo, GPA
+        FROM StudentTable
+    ) LOOP
+        IF r.GPA < 4 THEN
+            v_grade := 'F';
+        ELSIF r.GPA < 5 THEN
+            v_grade := 'E';
+        ELSIF r.GPA < 6 THEN
+            v_grade := 'D';
+        ELSIF r.GPA < 7 THEN
+            v_grade := 'C';
+        ELSIF r.GPA < 8 THEN
+            v_grade := 'B';
+        ELSIF r.GPA < 9 THEN
+            v_grade := 'A';
+        ELSE
+            v_grade := 'A+';
+        END IF;
+
+        UPDATE StudentTable
+        SET LetterGrade = v_grade
+        WHERE RollNo = r.RollNo;
+    END LOOP;
+
+    COMMIT;
+END;
+/
+
+
+Q13. Write a PL/SQL block to print the list of Instructors teaching a specified course.
+
+DECLARE
+    CURSOR c_instructors (p_course_id VARCHAR2) IS
+        SELECT DISTINCT I.ID, I.name, I.dept_name, I.salary
+        FROM Instructor I
+        JOIN Teaches T ON I.ID = T.ID
+        WHERE T.course_id = p_course_id;
+BEGIN
+    FOR r IN c_instructors('CS101') LOOP
+        DBMS_OUTPUT.PUT_LINE(
+            'ID: ' || r.ID ||
+            ', Name: ' || r.name ||
+            ', Department: ' || r.dept_name ||
+            ', Salary: ' || r.salary
+        );
+    END LOOP;
+END;
+/
+
+
+Change 'CS101' to the course ID you want to check.
+
+Row Triggers
+Q1. Based on the University database Schema in Lab 2, write a row trigger that records along with the time any change made in the Takes (ID, course-id, sec-id, semester, year, grade) table in log_change_Takes (Time_Of_Change, ID, courseid, sec-id, semester, year, grade).
+/The manual names the column ID in the log table, while the Takes table uses studID. The code below records the student ID in that log column.
+
+Create table
+CREATE TABLE log_change_Takes (
+    Time_Of_Change TIMESTAMP,
+    ID NUMBER,
+    courseid VARCHAR2(10),
+    sec_id NUMBER,
+    semester VARCHAR2(10),
+    year NUMBER,
+    grade VARCHAR2(2)
+);
+
+
+/Create trigger
+
+CREATE OR REPLACE TRIGGER trg_takes_log
+AFTER INSERT OR UPDATE OR DELETE ON Takes
+FOR EACH ROW
+BEGIN
+    IF INSERTING OR UPDATING THEN
+        INSERT INTO log_change_Takes
+        VALUES (
+            SYSTIMESTAMP,
+            :NEW.studID,
+            :NEW.course_id,
+            :NEW.section_id,
+            :NEW.semester,
+            :NEW.year,
+            :NEW.grade
+        );
+    ELSIF DELETING THEN
+        INSERT INTO log_change_Takes
+        VALUES (
+            SYSTIMESTAMP,
+            :OLD.studID,
+            :OLD.course_id,
+            :OLD.section_id,
+            :OLD.semester,
+            :OLD.year,
+            :OLD.grade
+        );
+    END IF;
+END;
+/
+
+
+/Test it:
+
+UPDATE Takes
+SET grade = 'B'
+WHERE studID = 12345
+  AND course_id = 'CS101';
+
+SELECT * FROM log_change_Takes;
+
+
+Q2. Based on the University database schema in Lab 2, write a row trigger to insert the existing values of the Instructor (ID, name, dept-name, salary) table into a new table Old_Data_Instructor (ID, name, dept-name, salary) when the salary table is updated.
+
+Create table
+CREATE TABLE Old_Data_Instructor (
+    ID NUMBER,
+    name VARCHAR2(30),
+    dept_name VARCHAR2(20),
+    salary NUMBER(10,2)
+);
+
+
+/Create trigger
+CREATE OR REPLACE TRIGGER trg_old_instructor
+BEFORE UPDATE OF salary ON Instructor
+FOR EACH ROW
+BEGIN
+    INSERT INTO Old_Data_Instructor
+    VALUES (
+        :OLD.ID,
+        :OLD.name,
+        :OLD.dept_name,
+        :OLD.salary
+    );
+END;
+/
+
+
+/Test it:
+UPDATE Instructor
+SET salary = salary + 1000
+WHERE ID = 10101;
+
+SELECT * FROM Old_Data_Instructor;
+
+
+
+Database Triggers
+Q3. Based on the University Schema, write a database trigger on Instructor that checks the following:
+- The name of the instructor is a valid name containing only alphabets.
+- The salary of an instructor is not zero and is positive.
+- The salary does not exceed the budget of the department to which the instructor belongs.
+
+CREATE OR REPLACE TRIGGER trg_validate_instructor
+BEFORE INSERT OR UPDATE ON Instructor
+FOR EACH ROW
+DECLARE
+    v_budget Department.budget%TYPE;
+BEGIN
+    IF NOT REGEXP_LIKE(:NEW.name, '^[A-Za-z]+$') THEN
+        RAISE_APPLICATION_ERROR(
+            -20001,
+            'Instructor name must contain only alphabets'
+        );
+    END IF;
+
+    IF :NEW.salary <= 0 THEN
+        RAISE_APPLICATION_ERROR(
+            -20002,
+            'Salary must be positive'
+        );
+    END IF;
+
+    SELECT budget INTO v_budget
+    FROM Department
+    WHERE dept_name = :NEW.dept_name;
+
+    IF :NEW.salary > v_budget THEN
+        RAISE_APPLICATION_ERROR(
+            -20003,
+            'Salary cannot exceed department budget'
+        );
+    END IF;
+END;
+/
+
+
+/Test with a valid update:
+
+UPDATE Instructor
+SET salary = 81000
+WHERE ID = 10101;
+
+
+
+Q4. Create a transparent audit system for a table Client_master (client_no, name, address, Bal_due). The system must keep track of the records that are being deleted or updated. When a record is deleted or modified, the original record details and the date of operation are stored in the auditclient (client_no, name, bal_due, operation, userid, opdate) table, then the delete or update is allowed to go through.
+
+Create tables
+CREATE TABLE Client_master (
+    client_no NUMBER PRIMARY KEY,
+    name VARCHAR2(30),
+    address VARCHAR2(100),
+    Bal_due NUMBER(10,2)
+);
+
+CREATE TABLE auditclient (
+    client_no NUMBER,
+    name VARCHAR2(30),
+    bal_due NUMBER(10,2),
+    operation VARCHAR2(10),
+    userid VARCHAR2(30),
+    opdate DATE
+);
+
+
+INSERT INTO Client_master
+VALUES (101, 'Amit', 'Manipal', 1500);
+
+INSERT INTO Client_master
+VALUES (102, 'Priya', 'Udupi', 2500);
+
+INSERT INTO Client_master
+VALUES (103, 'Rahul', 'Mangalore', 1000);
+
+COMMIT;
+
+
+/Create audit trigger
+
+CREATE OR REPLACE TRIGGER trg_client_audit
+BEFORE UPDATE OR DELETE ON Client_master
+FOR EACH ROW
+BEGIN
+    IF UPDATING THEN
+        INSERT INTO auditclient
+        VALUES (
+            :OLD.client_no,
+            :OLD.name,
+            :OLD.Bal_due,
+            'UPDATE',
+            USER,
+            SYSDATE
+        );
+    ELSIF DELETING THEN
+        INSERT INTO auditclient
+        VALUES (
+            :OLD.client_no,
+            :OLD.name,
+            :OLD.Bal_due,
+            'DELETE',
+            USER,
+            SYSDATE
+        );
+    END IF;
+END;
+/
+
+
+/Test the trigger:
+
+UPDATE Client_master
+SET Bal_due = 1800
+WHERE client_no = 101;
+
+SELECT * FROM auditclient;
+
+
+/Instead of Triggers
+Q5. Based on the University database Schema in Lab 2, create a view Advisor_Student which is a natural join on Advisor, Student and Instructor tables. Create an INSTEAD OF trigger on Advisor_Student to enable the user to delete the corresponding entries in Advisor table.
+Create the view
+
+CREATE OR REPLACE VIEW Advisor_Student AS
+SELECT *
+FROM Advisor
+NATURAL JOIN Student
+NATURAL JOIN Instructor;
+
+
+/Create the INSTEAD OF DELETE trigger
+
+CREATE OR REPLACE TRIGGER trg_delete_advisor_student
+INSTEAD OF DELETE ON Advisor_Student
+FOR EACH ROW
+BEGIN
+    DELETE FROM Advisor
+    WHERE studID = :OLD.studID
+      AND ID = :OLD.ID;
+END;
+/
+
+
+/Test it:
+
+SELECT * FROM Advisor_Student;
+
+
+/To delete a specific advisor relationship, use the key values from the view:
+
+DELETE FROM Advisor_Student
+WHERE studID = 12345
+  AND ID = 10101;
+  
