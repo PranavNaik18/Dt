@@ -1,0 +1,315 @@
+Experiment 1 — SQL Basics (Lab No. 1)
+Common setup: Create tables and insert 3 values
+Run this setup once in Oracle SQL Developer. The same university tables will be used for Experiments 1, 2 and 3.
+
+CREATE TABLE Department (
+    dept_name VARCHAR2(20) PRIMARY KEY,
+    building VARCHAR2(30),
+    budget NUMBER(12,2)
+);
+
+CREATE TABLE Student (
+    studID NUMBER PRIMARY KEY,
+    name VARCHAR2(30),
+    dept_name VARCHAR2(20),
+    tot_cred NUMBER,
+    FOREIGN KEY (dept_name) REFERENCES Department(dept_name)
+);
+
+CREATE TABLE Instructor (
+    ID NUMBER PRIMARY KEY,
+    name VARCHAR2(30),
+    dept_name VARCHAR2(20),
+    salary NUMBER(10,2),
+    FOREIGN KEY (dept_name) REFERENCES Department(dept_name)
+);
+
+CREATE TABLE Course (
+    course_id VARCHAR2(10) PRIMARY KEY,
+    title VARCHAR2(50),
+    dept_name VARCHAR2(20),
+    credits NUMBER,
+    FOREIGN KEY (dept_name) REFERENCES Department(dept_name)
+);
+
+CREATE TABLE Classroom (
+    building VARCHAR2(30),
+    room_number NUMBER,
+    capacity NUMBER,
+    PRIMARY KEY (building, room_number)
+);
+
+CREATE TABLE Section (
+    course_id VARCHAR2(10),
+    section_id NUMBER,
+    semester VARCHAR2(10),
+    year NUMBER,
+    building VARCHAR2(30),
+    room_number NUMBER,
+    time_slot_id VARCHAR2(10),
+    PRIMARY KEY (course_id, section_id, semester, year),
+    FOREIGN KEY (course_id) REFERENCES Course(course_id),
+    FOREIGN KEY (building, room_number)
+        REFERENCES Classroom(building, room_number)
+);
+
+CREATE TABLE Takes (
+    studID NUMBER,
+    course_id VARCHAR2(10),
+    section_id NUMBER,
+    semester VARCHAR2(10),
+    year NUMBER,
+    grade VARCHAR2(2),
+    PRIMARY KEY (studID, course_id, section_id, semester, year),
+    FOREIGN KEY (studID) REFERENCES Student(studID),
+    FOREIGN KEY (course_id, section_id, semester, year)
+        REFERENCES Section(course_id, section_id, semester, year)
+);
+
+CREATE TABLE Teaches (
+    ID NUMBER,
+    course_id VARCHAR2(10),
+    section_id NUMBER,
+    semester VARCHAR2(10),
+    year NUMBER,
+    PRIMARY KEY (ID, course_id, section_id, semester, year),
+    FOREIGN KEY (ID) REFERENCES Instructor(ID),
+    FOREIGN KEY (course_id, section_id, semester, year)
+        REFERENCES Section(course_id, section_id, semester, year)
+);
+
+CREATE TABLE Advisor (
+    studID NUMBER,
+    ID NUMBER,
+    PRIMARY KEY (studID, ID),
+    FOREIGN KEY (studID) REFERENCES Student(studID),
+    FOREIGN KEY (ID) REFERENCES Instructor(ID)
+);
+
+CREATE TABLE Time_slot (
+    time_slot_id VARCHAR2(10),
+    day VARCHAR2(10),
+    start_time VARCHAR2(10),
+    end_time VARCHAR2(10),
+    PRIMARY KEY (time_slot_id, day, start_time)
+);
+
+CREATE TABLE Prereq (
+    course_id VARCHAR2(10),
+    prereq_id VARCHAR2(10),
+    PRIMARY KEY (course_id, prereq_id),
+    FOREIGN KEY (course_id) REFERENCES Course(course_id),
+    FOREIGN KEY (prereq_id) REFERENCES Course(course_id)
+);
+
+
+Insert sample values
+Each table below receives 3 sample rows. Insert the parent tables before the child tables.
+
+INSERT INTO Department VALUES ('CSE', 'Block A', 200000);
+INSERT INTO Department VALUES ('Biology', 'Block B', 150000);
+INSERT INTO Department VALUES ('Physics', 'Block C', 180000);
+
+INSERT INTO Student VALUES (12345, 'Amit', 'CSE', 90);
+INSERT INTO Student VALUES (12346, 'Priya', 'Biology', 75);
+INSERT INTO Student VALUES (12347, 'Rahul', 'CSE', 60);
+
+INSERT INTO Instructor VALUES (10101, 'Anita', 'CSE', 80000);
+INSERT INTO Instructor VALUES (10102, 'Suresh', 'Biology', 50000);
+INSERT INTO Instructor VALUES (10103, 'Priya', 'Physics', 95000);
+
+INSERT INTO Course VALUES ('CS101', 'Database', 'CSE', 3);
+INSERT INTO Course VALUES ('BIO101', 'Genetics', 'Biology', 4);
+INSERT INTO Course VALUES ('PHY101', 'Mechanics', 'Physics', 3);
+
+INSERT INTO Classroom VALUES ('Block A', 303, 60);
+INSERT INTO Classroom VALUES ('Block B', 204, 40);
+INSERT INTO Classroom VALUES ('Block C', 101, 50);
+
+INSERT INTO Section VALUES ('CS101', 1, 'Fall', 2009, 'Block A', 303, 'T1');
+INSERT INTO Section VALUES ('BIO101', 1, 'Spring', 2010, 'Block B', 204, 'T2');
+INSERT INTO Section VALUES ('PHY101', 1, 'Fall', 2009, 'Block C', 101, 'T3');
+
+INSERT INTO Takes VALUES (12345, 'CS101', 1, 'Fall', 2009, 'A');
+INSERT INTO Takes VALUES (12346, 'BIO101', 1, 'Spring', 2010, 'B');
+INSERT INTO Takes VALUES (12347, 'PHY101', 1, 'Fall', 2009, 'A');
+
+INSERT INTO Teaches VALUES (10101, 'CS101', 1, 'Fall', 2009);
+INSERT INTO Teaches VALUES (10102, 'BIO101', 1, 'Spring', 2010);
+INSERT INTO Teaches VALUES (10103, 'PHY101', 1, 'Fall', 2009);
+
+INSERT INTO Advisor VALUES (12345, 10101);
+INSERT INTO Advisor VALUES (12346, 10102);
+INSERT INTO Advisor VALUES (12347, 10101);
+
+INSERT INTO Time_slot VALUES ('T1', 'Monday', '09:00', '10:00');
+INSERT INTO Time_slot VALUES ('T2', 'Tuesday', '10:00', '11:00');
+INSERT INTO Time_slot VALUES ('T3', 'Wednesday', '11:00', '12:00');
+
+INSERT INTO Prereq VALUES ('CS101', 'PHY101');
+INSERT INTO Prereq VALUES ('BIO101', 'PHY101');
+INSERT INTO Prereq VALUES ('PHY101', 'CS101');
+
+COMMIT;
+
+
+Q1. List all students with their names and department names.
+
+SELECT name, dept_name
+FROM Student;
+
+
+Q2. List all instructors in the CSE department.
+
+SELECT *
+FROM Instructor
+WHERE dept_name = 'CSE';
+
+
+Q3. Find the names of courses in the CSE department that have 3 credits.
+
+SELECT title
+FROM Course
+WHERE dept_name = 'CSE'
+  AND credits = 3;
+
+
+Q4. For student ID 12345, show all course IDs and titles of courses registered for by the student.
+
+SELECT C.course_id, C.title
+FROM Course C
+JOIN Takes T ON C.course_id = T.course_id
+WHERE T.studID = 12345;
+
+
+Q5. List instructors whose salary is between 40000 and 90000.
+
+SELECT *
+FROM Instructor
+WHERE salary BETWEEN 40000 AND 90000;
+
+
+Q6. Display IDs of instructors who have never taught a course.
+
+SELECT I.ID
+FROM Instructor I
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM Teaches T
+    WHERE T.ID = I.ID
+);
+
+
+Q7. Find student names, course names and year for students who attended classes in room 303.
+
+SELECT S.name, C.title, Sec.year
+FROM Student S
+JOIN Takes T ON S.studID = T.studID
+JOIN Course C ON T.course_id = C.course_id
+JOIN Section Sec
+  ON T.course_id = Sec.course_id
+ AND T.section_id = Sec.section_id
+ AND T.semester = Sec.semester
+ AND T.year = Sec.year
+WHERE Sec.room_number = 303;
+
+
+Q8. For students who opted for courses in 2015, show their names and course IDs, renaming the course title as c_name.
+
+SELECT S.name, C.course_id, C.title AS c_name
+FROM Student S
+JOIN Takes T ON S.studID = T.studID
+JOIN Course C ON T.course_id = C.course_id
+WHERE T.year = 2015;
+
+
+Q9. Find instructors whose salary is greater than at least one CSE instructor. Rename salary as inst_salary.
+
+SELECT name, salary AS inst_salary
+FROM Instructor
+WHERE salary > (
+    SELECT MIN(salary)
+    FROM Instructor
+    WHERE dept_name = 'CSE'
+);
+
+
+Q10. Find instructors whose department name includes ch.
+
+SELECT name
+FROM Instructor
+WHERE LOWER(dept_name) LIKE '%ch%';
+
+
+Q11. List student names and the length of each name.
+
+SELECT name, LENGTH(name) AS name_length
+FROM Student;
+
+
+Q12. Display the department names and 3 characters starting from the 3rd position.
+
+SELECT dept_name, SUBSTR(dept_name, 3, 3) AS extracted_text
+FROM Department;
+
+
+Q13. Display instructor names in uppercase.
+
+SELECT UPPER(name) AS instructor_name
+FROM Instructor;
+
+
+Q14. Replace a NULL value with 0.
+
+SELECT name, NVL(salary, 0) AS salary
+FROM Instructor;
+
+
+Q15. Display salary and salary divided by 3, rounded to the nearest hundred.
+
+SELECT salary, ROUND(salary / 3, -2) AS rounded_salary
+FROM Instructor;
+
+
+Q16. Display instructor birth dates in DD-MON-YYYY, DD-MON-YY and DD-MM-YY formats.
+
+First add the DOB column and insert three values:
+ALTER TABLE Instructor ADD DOB DATE;
+
+UPDATE Instructor
+SET DOB = DATE '2000-05-15'
+WHERE ID = 10101;
+
+UPDATE Instructor
+SET DOB = DATE '1995-11-20'
+WHERE ID = 10102;
+
+UPDATE Instructor
+SET DOB = DATE '1988-02-08'
+WHERE ID = 10103;
+
+COMMIT;
+
+
+Queries:
+SELECT name, TO_CHAR(DOB, 'DD-MON-YYYY') AS dob_format
+FROM Instructor;
+
+SELECT name, TO_CHAR(DOB, 'DD-MON-YY') AS dob_format
+FROM Instructor;
+
+SELECT name, TO_CHAR(DOB, 'DD-MM-YY') AS dob_format
+FROM Instructor;
+
+
+Q17. Display instructor names and the year they were born in YEAR, Year and year formats.
+SELECT name, TO_CHAR(DOB, 'YEAR') AS birth_year
+FROM Instructor;
+
+SELECT name, TO_CHAR(DOB, 'Year') AS birth_year
+FROM Instructor;
+
+SELECT name, TO_CHAR(DOB, 'year') AS birth_year
+FROM Instructor;
+
+
