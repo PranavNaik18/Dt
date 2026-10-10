@@ -1,0 +1,209 @@
+Experiment 3 — Complex Queries on SQL (Lab No. 3)
+Continue using the same tables and sample data.
+
+INSERT INTO Department VALUES ('IT', 'Block D', 160000);
+
+Q1. Find the number of students in each course.
+
+SELECT C.course_id, C.title, COUNT(T.studID) AS student_count
+FROM Course C
+LEFT JOIN Takes T ON C.course_id = T.course_id
+GROUP BY C.course_id, C.title;
+
+
+Q2. Find departments where the average number of students per course is greater than 10.
+
+SELECT C.dept_name,
+       AVG(NVL(X.student_count, 0)) AS avg_students
+FROM Course C
+LEFT JOIN (
+    SELECT course_id, COUNT(studID) AS student_count
+    FROM Takes
+    GROUP BY course_id
+) X ON C.course_id = X.course_id
+GROUP BY C.dept_name
+HAVING AVG(NVL(X.student_count, 0)) > 10;
+
+
+Q3. Find the total number of courses in each department.
+
+SELECT D.dept_name, COUNT(C.course_id) AS total_courses
+FROM Department D
+LEFT JOIN Course C ON D.dept_name = C.dept_name
+GROUP BY D.dept_name;
+
+
+Q4. Find departments whose average instructor salary is greater than 42000.
+
+SELECT dept_name, AVG(salary) AS avg_salary
+FROM Instructor
+GROUP BY dept_name
+HAVING AVG(salary) > 42000;
+
+
+Q5. Find the enrolment of each section offered in Spring 2009.
+
+SELECT S.course_id, S.section_id, S.semester, S.year,
+       COUNT(T.studID) AS enrolment
+FROM Section S
+LEFT JOIN Takes T
+  ON S.course_id = T.course_id
+ AND S.section_id = T.section_id
+ AND S.semester = T.semester
+ AND S.year = T.year
+WHERE S.semester = 'Spring'
+  AND S.year = 2009
+GROUP BY S.course_id, S.section_id, S.semester, S.year;
+
+
+Q6. List all courses with their prerequisite courses, ordered by course ID.
+
+SELECT C.course_id, C.title, P.prereq_id
+FROM Course C
+LEFT JOIN Prereq P ON C.course_id = P.course_id
+ORDER BY C.course_id ASC;
+
+
+Q7. Display instructor details sorted by salary in decreasing order.
+
+SELECT *
+FROM Instructor
+ORDER BY salary DESC;
+
+
+Q8. Find the maximum total salary across departments.
+
+SELECT MAX(total_salary) AS maximum_total_salary
+FROM (
+    SELECT dept_name, SUM(salary) AS total_salary
+    FROM Instructor
+    GROUP BY dept_name
+);
+
+
+Q9. Find average instructor salaries for departments whose average salary is greater than 42000.
+
+SELECT dept_name, AVG(salary) AS avg_salary
+FROM Instructor
+GROUP BY dept_name
+HAVING AVG(salary) > 42000;
+
+
+Q10. Find sections with the maximum enrolment in Spring 2010.
+
+SELECT S.course_id, S.section_id, COUNT(T.studID) AS enrolment
+FROM Section S
+LEFT JOIN Takes T
+  ON S.course_id = T.course_id
+ AND S.section_id = T.section_id
+ AND S.semester = T.semester
+ AND S.year = T.year
+WHERE S.semester = 'Spring'
+  AND S.year = 2010
+GROUP BY S.course_id, S.section_id
+HAVING COUNT(T.studID) = (
+    SELECT MAX(enrolment)
+    FROM (
+        SELECT COUNT(T2.studID) AS enrolment
+        FROM Section S2
+        LEFT JOIN Takes T2
+          ON S2.course_id = T2.course_id
+         AND S2.section_id = T2.section_id
+         AND S2.semester = T2.semester
+         AND S2.year = T2.year
+        WHERE S2.semester = 'Spring'
+          AND S2.year = 2010
+        GROUP BY S2.course_id, S2.section_id
+    )
+);
+
+
+Q11. Find instructors who teach all students belonging to the CSE department.
+
+SELECT I.ID, I.name
+FROM Instructor I
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM Student S
+    WHERE S.dept_name = 'CSE'
+      AND NOT EXISTS (
+          SELECT 1
+          FROM Teaches T
+          JOIN Takes K
+            ON T.course_id = K.course_id
+           AND T.section_id = K.section_id
+           AND T.semester = K.semester
+           AND T.year = K.year
+          WHERE T.ID = I.ID
+            AND K.studID = S.studID
+      )
+);
+
+
+Q12. Find departments with average salary greater than 50000 and more than 5 instructors.
+
+SELECT dept_name, AVG(salary) AS avg_salary,
+       COUNT(*) AS instructor_count
+FROM Instructor
+GROUP BY dept_name
+HAVING AVG(salary) > 50000
+   AND COUNT(*) > 5;
+
+
+Q13. Find departments with the maximum budget using WITH.
+
+WITH max_budget AS (
+    SELECT MAX(budget) AS highest_budget
+    FROM Department
+)
+SELECT D.dept_name, D.budget
+FROM Department D
+JOIN max_budget M ON D.budget = M.highest_budget;
+
+
+Q14. Find departments whose total salary is greater than the average total salary across departments.
+
+WITH dept_salary AS (
+    SELECT D.dept_name, NVL(SUM(I.salary), 0) AS total_salary
+    FROM Department D
+    LEFT JOIN Instructor I ON D.dept_name = I.dept_name
+    GROUP BY D.dept_name
+)
+SELECT dept_name, total_salary
+FROM dept_salary
+WHERE total_salary > (
+    SELECT AVG(total_salary)
+    FROM dept_salary
+);
+
+
+Q15. Transfer all students from CSE to IT.
+The manual asks for CSE-to-IT transfer. Since IT is not among the sample departments, create it first:
+
+INSERT INTO Department VALUES ('IT', 'Block D', 160000);
+SAVEPOINT before_transfer;
+
+UPDATE Student
+SET dept_name = 'IT'
+WHERE dept_name = 'CSE';
+
+SELECT *
+FROM Student;
+
+ROLLBACK TO before_transfer;
+
+
+Q16. Increase instructor salaries over 100000 by 3% and all other salaries by 5%.
+
+SAVEPOINT before_raise;
+
+UPDATE Instructor
+SET salary = CASE
+    WHEN salary > 100000 THEN salary * 1.03
+    ELSE salary * 1.05
+END;
+
+SELECT ID, name, salary
+FROM Instructor;
+
+ROLLBACK TO before_raise;
